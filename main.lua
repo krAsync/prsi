@@ -41,20 +41,38 @@ function love.draw()
     local startY = love.graphics.getHeight() - 300  -- 140px from bottom
 
     local cardOffset = 0
+    local mouseX, mouseY = love.mouse.getPosition()
+    local CARD_HEIGHT = CARD_WIDTH * 1.7  -- Card height based on width ratio
+
     for _,card in ipairs(player_hand.cards) do
         love.graphics.draw(card.sprite, startX + cardOffset, startY, 0, CARD_SCALE, CARD_SCALE)
 
-        -- Draw green outline if card is active
+        -- Check if mouse is hovering over this card
+        local isHovering = mouseX >= startX + cardOffset and mouseX <= startX + cardOffset + CARD_WIDTH and
+                          mouseY >= startY and mouseY <= startY + CARD_HEIGHT
+
+        -- Draw white outline if hovering
+        if isHovering then
+            love.graphics.setColor(1, 1, 1, 1)  -- White color
+            love.graphics.setLineWidth(3)
+            love.graphics.rectangle("line", startX + cardOffset, startY, CARD_WIDTH, CARD_HEIGHT)
+            love.graphics.setColor(1, 1, 1, 1)  -- Reset to white
+        end
+
+        -- Draw green outline if card is active (draws on top of hover outline)
         if card.is_active then
             love.graphics.setColor(0, 1, 0, 1)  -- Green color
             love.graphics.setLineWidth(3)
-            love.graphics.rectangle("line", startX + cardOffset, startY, CARD_WIDTH, CARD_WIDTH * 1.7)
+            love.graphics.rectangle("line", startX + cardOffset, startY, CARD_WIDTH, CARD_HEIGHT)
             love.graphics.setColor(1, 1, 1, 1)  -- Reset to white
         end
 
         cardOffset = cardOffset + cardSpacing
     end
 
+    -- Calculate cardback scale to match card sprite dimensions
+    local cardbackScale = (current.sprite:getWidth() * CARD_SCALE) / cardback:getWidth()
+
     love.graphics.draw(current.sprite, mid_x - (CARD_WIDTH/2 + 20), mid_y - CARD_WIDTH * 0.85, 0, CARD_SCALE, CARD_SCALE)
-    love.graphics.draw(cardback, mid_x + (CARD_WIDTH/2 + 20), mid_y - CARD_WIDTH * 0.85, 0, CARD_SCALE, CARD_SCALE)
+    love.graphics.draw(cardback, mid_x + (CARD_WIDTH/2 + 20), mid_y - CARD_WIDTH * 0.85, 0, cardbackScale, cardbackScale)
 end
