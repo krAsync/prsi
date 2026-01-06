@@ -1,12 +1,14 @@
 -- deck.lua
+
 local Card = require("card")
 
 local Deck = {}
 Deck.__index = Deck
 
-function Deck:new()
+function Deck:new(played)
     local obj = setmetatable({}, Deck)
     obj.cards = {}
+    obj.played = played or {}
     obj:build()
     obj:shuffle()
     return obj
@@ -42,7 +44,25 @@ function Deck:shuffle()
 end
 
 function Deck:deal()
+    if self:isempty() then
+        self:reset()
+        self:shuffle()
+    end
     return table.remove(self.cards, 1)
+end
+
+function Deck:isempty()
+    local count = 0
+    for _ in pairs(self.cards) do
+        count = count + 1
+    end
+    if count <= 0 then return true else return false end
+end
+
+function Deck:reset()
+    self.cards = self.played
+    self.played = {}
+    return self
 end
 
 return Deck
