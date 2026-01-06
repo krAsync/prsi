@@ -8,6 +8,7 @@ function Deck:new()
     local obj = setmetatable({}, Deck)
     obj.cards = {}
     obj:build()
+    obj:shuffle()
     return obj
 end
 
@@ -26,6 +27,17 @@ function Deck:build()
             table.insert(self.cards, card)
         end
        
+    end
+end
+
+function Deck:shuffle()
+    -- Seed random number generator with current time
+    math.randomseed(os.time())
+
+    -- Fisher-Yates shuffle algorithm
+    for i = #self.cards, 2, -1 do
+        local j = math.random(1, i)
+        self.cards[i], self.cards[j] = self.cards[j], self.cards[i]
     end
 end
 
