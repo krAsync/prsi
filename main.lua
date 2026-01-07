@@ -44,8 +44,13 @@ function love.draw()
 
     local cardOffset = 0
     local mouseX, mouseY = love.mouse.getPosition()
-    local CARD_HEIGHT = CARD_WIDTH * 1.7  
-
+    local CARD_HEIGHT = CARD_WIDTH * 1.7
+    local cardbackScale = (current.sprite:getWidth() * CARD_SCALE) / cardback:getWidth()
+        for _,card in ipairs(oponent_hand.cards) do
+        love.graphics.draw(cardback, startX + cardOffset,  100,0, cardbackScale, cardbackScale)
+        cardOffset = cardOffset + cardSpacing
+    end
+    cardOffset = 0
     for _,card in ipairs(player_hand.cards) do
         love.graphics.draw(card.sprite, startX + cardOffset, startY, 0, CARD_SCALE, CARD_SCALE)
 
@@ -73,7 +78,7 @@ function love.draw()
     end
 
 
-    local cardbackScale = (current.sprite:getWidth() * CARD_SCALE) / cardback:getWidth()
+
 
     love.graphics.draw(current.sprite, mid_x - (CARD_WIDTH/2 + 20), mid_y - CARD_WIDTH * 0.85, 0, CARD_SCALE, CARD_SCALE)
     love.graphics.draw(cardback, mid_x + (CARD_WIDTH/2 + 20), mid_y - CARD_WIDTH * 0.85, 0, cardbackScale, cardbackScale)
