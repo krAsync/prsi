@@ -4,6 +4,7 @@ local current
 local background
 local cardback
 local played = {}
+is_turn = true
 
 function love.load()
     love.window.setFullscreen(true)
@@ -25,6 +26,26 @@ local function check_playable(player)
     end
 end
 
+function love.update(dt)
+    if not is_turn then
+        check_playable(oponent_hand)
+        for i,card in ipairs(oponent_hand.cards) do
+            if not is_turn then
+            if card.playable then
+                oponent_hand:play(i)
+                current = card
+                table.insert(played, card)
+                is_turn = true
+                break
+            end
+        end
+    end
+        if not is_turn then
+            oponent_hand:draw()
+            is_turn = true
+    end
+end
+end
 
 local CARD_SCALE = 0.28 
 local CARD_WIDTH = 140 
@@ -38,6 +59,8 @@ function love.draw()
     check_playable(player_hand)
 
     local cardSpacing = CARD_WIDTH + 10
+    local totalOponentWidth = (#oponent_hand.cards * cardSpacing) - (cardSpacing - CARD_WIDTH)
+    local OponentstartX = (love.graphics.getWidth() - totalOponentWidth) / 2
     local totalWidth = (#player_hand.cards * cardSpacing) - (cardSpacing - CARD_WIDTH)
     local startX = (love.graphics.getWidth() - totalWidth) / 2
     local startY = love.graphics.getHeight() - 300  -- 140px 
@@ -47,7 +70,7 @@ function love.draw()
     local CARD_HEIGHT = CARD_WIDTH * 1.7
     local cardbackScale = (current.sprite:getWidth() * CARD_SCALE) / cardback:getWidth()
         for _,card in ipairs(oponent_hand.cards) do
-        love.graphics.draw(cardback, startX + cardOffset,  100,0, cardbackScale, cardbackScale)
+        love.graphics.draw(cardback, OponentstartX + cardOffset,  100,0, cardbackScale, cardbackScale)
         cardOffset = cardOffset + cardSpacing
     end
     cardOffset = 0
@@ -100,11 +123,12 @@ function love.mousepressed(x, y, button, istouch, presses)
             print(card.playable)
             local isHovering = mouseX >= startX + cardOffset and mouseX <= startX + cardOffset + CARD_WIDTH and mouseY >= startY and mouseY <= startY + CARD_HEIGHT
 
-            if isHovering and card.playable then
+            if isHovering and card.playable and is_turn then
                 -- TODO: Add card play logic here
                 current = card
                 player_hand:play(i)
                 table.insert(played, card)
+                is_turn = false
                 break
             end
             print(card.playable)
@@ -124,6 +148,7 @@ function love.mousepressed(x, y, button, istouch, presses)
         if isDeckHovering then
             -- TODO: Add deck click logic here
             player_hand:draw()
+            is_turn = false
         end
     end
 end
