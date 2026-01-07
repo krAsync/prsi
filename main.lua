@@ -299,14 +299,15 @@ if is_turn then
         ((current.sprite:getWidth() * CARD_SCALE) / cardback:getWidth())
 
     local isDeckHovering =
-        mouseX >= deckX and mouseX <= deckX + deckWidth and
-        mouseY >= deckY and mouseY <= deckY + deckHeight
+        x >= deckX and x <= deckX + deckWidth and
+        y >= deckY and y <= deckY + deckHeight
 
     if isDeckHovering then
         -- TODO: Add deck click logic here
         player_hand:draw()
         is_turn = false
     end
+end
 end
 
 
