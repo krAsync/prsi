@@ -6,6 +6,8 @@ local background
 local cardback
 local played = {}
 
+local is_seven = false
+local seven_penalty_count = 0
 local is_eso = false
 local is_turn = true
 local display_skip_message = false
@@ -36,11 +38,14 @@ function update_playable(pl)
     for _, card in ipairs(pl.cards) do
         if is_eso then
             card.playable = (card.value == 'e')
-
+        
+        elseif is_seven then
+            card.playable = (card.value == '7')
         else
             card.playable =
                 card.suit == current.suit or
-                card.value == current.value
+                current.value == card.value or
+                card.value == '7'
         end
     end
 end
@@ -57,6 +62,7 @@ function love.update(dt)
                     has_eso = true
                     break
                 end
+        
             end
 
             if not has_eso then
@@ -66,7 +72,28 @@ function love.update(dt)
                 skip_message_timer = 3
                 return
             end
+        end        
+        if is_seven then
+            local has_seven = false
+            for _, card in ipairs(player_hand.cards) do
+                if card.value == '7' then
+                    has_seven = true
+                    break
+                end
+        
+            end
+
+            if not has_seven then
+                is_seven = false
+                for i = 1, seven_penalty_count do
+                    player_hand:draw()
+                end
+                seven_penalty_count = 0
+                is_turn = false -- Pass turn to opponent after drawing
+                return
+            end
         end
+    
     else -- not is_turn (opponent's turn)
         update_playable(oponent_hand)
 
@@ -99,11 +126,48 @@ function love.update(dt)
             end
         end
 
+                if is_seven then
+            local has_seven = false
+            for _, card in ipairs(oponent_hand.cards) do
+                if card.value == '7' then
+                    has_seven = true
+                    break
+                end
+            end
+
+            if has_seven then
+                for i, card in ipairs(oponent_hand.cards) do
+                    if card.value == '7' then
+                        current = card
+                        is_seven = true
+                        oponent_hand:play(i)
+                        seven_penalty_count = seven_penalty_count + 2
+                        table.insert(played, card)
+                        is_turn = true
+                        update_playable(player_hand)
+                        return
+                    end
+                end
+            else
+                is_seven = false -- Fix: was is_eso = false
+                for i = 1, seven_penalty_count do
+                    oponent_hand:draw()
+                end
+                seven_penalty_count = 0
+                is_turn = true
+                update_playable(player_hand)
+                return
+            end
+        end
+
         for i, card in ipairs(oponent_hand.cards) do
             if card.playable then
                 current = card
                 if card.value == 'e' then
                     is_eso = true
+                elseif card.value == '7' then
+                    is_seven = true
+                    seven_penalty_count = seven_penalty_count + 2
                 else
                     is_eso = false
                 end
@@ -253,6 +317,9 @@ if is_turn then
 
             if card.value == 'e' then
                 is_eso = true
+            elseif card.value == '7' then
+                is_seven = true
+                seven_penalty_count = seven_penalty_count + 2
             else
                 is_eso = false
             end
