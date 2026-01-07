@@ -8,6 +8,8 @@ local played = {}
 
 local is_eso = false
 local is_turn = true
+local display_skip_message = false
+local skip_message_timer = 0
 
 -- =========================
 -- LOVE.LOAD
@@ -34,6 +36,7 @@ function update_playable(pl)
     for _, card in ipairs(pl.cards) do
         if is_eso then
             card.playable = (card.value == 'e')
+
         else
             card.playable =
                 card.suit == current.suit or
@@ -46,32 +49,72 @@ end
 -- LOVE.UPDATE (OPONENT)
 -- =========================
 function love.update(dt)
-    if not is_turn then
-        update_playable(oponent_hand)
+if not is_turn then
+    update_playable(oponent_hand)
 
-        for i, card in ipairs(oponent_hand.cards) do
-            if card.playable then
-                current = card
-
-                if card.value == 'e' then
-                    is_eso = true
-                else
-                    is_eso = false
-                end
-
-                oponent_hand:play(i)
-                table.insert(played, card)
-
-                is_turn = true
-                update_playable(player_hand)
-                return
+    if is_eso then
+        -- zkontroluj, jestli má eso k zahrání
+        local has_eso = false
+        for _, card in ipairs(oponent_hand.cards) do
+            if card.value == 'e' then
+                has_eso = true
+                break
             end
         end
 
-        -- nemá hratelnou → dobírá
-        oponent_hand:draw()
-        is_turn = true
-        update_playable(player_hand)
+        if has_eso then
+            -- zahrát eso místo přeskočení
+            for i, card in ipairs(oponent_hand.cards) do
+                if card.value == 'e' then
+                    current = card
+                    is_eso = true  -- eso pokračuje
+                    oponent_hand:play(i)
+                    table.insert(played, card)
+                    is_turn = true
+                    update_playable(player_hand)
+                    return
+                end
+            end
+        else
+            -- nemá eso → přeskočí tah
+            is_eso = false
+            is_turn = true
+            update_playable(player_hand)
+            return
+        end
+    end
+
+    -- normální tah (žádné eso aktivní)
+    for i, card in ipairs(oponent_hand.cards) do
+        if card.playable then
+            current = card
+
+            if card.value == 'e' then
+                is_eso = true
+            else
+                is_eso = false
+            end
+
+            oponent_hand:play(i)
+            table.insert(played, card)
+
+            is_turn = true
+            update_playable(player_hand)
+            return
+        end
+    end
+
+    -- nemá žádnou hratelnou kartu → dobírá (nebo skip podle pravidel)
+    oponent_hand:draw()
+    is_turn = true
+    update_playable(player_hand)
+end
+
+    if display_skip_message then
+        skip_message_timer = skip_message_timer - dt
+        if skip_message_timer <= 0 then
+            display_skip_message = false
+        end
     end
 end
 
@@ -163,6 +206,15 @@ function love.draw()
         mid_x + (CARD_WIDTH / 2 + 20),
         mid_y - CARD_WIDTH * 0.85,
         0, cardbackScale, cardbackScale)
+
+    if display_skip_message then
+        love.graphics.setColor(1, 0, 0, 1) -- Red color for the message
+        love.graphics.print("Turn skipped due to ESO effect!",
+            mid_x - 100, -- Adjust X for centering
+            mid_y + 100 -- Adjust Y to place it below current card
+        )
+        love.graphics.setColor(1, 1, 1, 1) -- Reset color
+    end
 end
 
 -- =========================
@@ -170,51 +222,64 @@ end
 -- =========================
 
 function love.mousepressed(x, y, button, istouch, presses)
-    if button ~= 1 then return end
+if is_turn then
+    update_playable(player_hand)
 
-    local mouseX, mouseY = love.mouse.getPosition()
-
-    -- =========================
-    -- HRANÍ KARET
-    -- =========================
-    if is_turn then
-        update_playable(player_hand)
-
-        local cardSpacing = CARD_WIDTH + 10
-        local totalWidth =
-            (#player_hand.cards * cardSpacing) - (cardSpacing - CARD_WIDTH)
-        local startX =
-            (love.graphics.getWidth() - totalWidth) / 2
-        local startY = love.graphics.getHeight() - 300
-        local CARD_HEIGHT = CARD_WIDTH * 1.7
-
-        local offset = 0
-        for i, card in ipairs(player_hand.cards) do
-            local isHovering =
-                mouseX >= startX + offset and
-                mouseX <= startX + offset + CARD_WIDTH and
-                mouseY >= startY and
-                mouseY <= startY + CARD_HEIGHT
-
-            if isHovering and card.playable then
-                current = card
-
-                if card.value == 'e' then
-                    is_eso = true
-                else
-                    is_eso = false
-                end
-
-                player_hand:play(i)
-                table.insert(played, card)
-
-                is_turn = false
-                return
+    -- pokud je eso aktivní
+    if is_eso then
+        -- hráč smí zahrát eso, pokud ho má
+        local has_eso = false
+        for _, card in ipairs(player_hand.cards) do
+            if card.value == 'e' then
+                has_eso = true
+                break
             end
+        end
 
-            offset = offset + cardSpacing
+        if not has_eso then
+            -- nemá eso → tah přeskočen
+            is_eso = false
+            is_turn = false
+            display_skip_message = true
+            skip_message_timer = 3
+            return
         end
     end
+
+    -- normální klik na kartu
+    local cardSpacing = CARD_WIDTH + 10
+    local totalWidth = (#player_hand.cards * cardSpacing) - (cardSpacing - CARD_WIDTH)
+    local startX = (love.graphics.getWidth() - totalWidth) / 2
+    local startY = love.graphics.getHeight() - 300
+    local CARD_HEIGHT = CARD_WIDTH * 1.7
+
+    local offset = 0
+    for i, card in ipairs(player_hand.cards) do
+        local isHovering =
+            x >= startX + offset and x <= startX + offset + CARD_WIDTH and
+            y >= startY and y <= startY + CARD_HEIGHT
+
+        if isHovering and card.playable then
+            current = card
+
+            if card.value == 'e' then
+                is_eso = true
+            else
+                is_eso = false
+            end
+
+            player_hand:play(i)
+            table.insert(played, card)
+
+            is_turn = false
+            update_playable(player_hand)
+            return
+        end
+
+        offset = offset + cardSpacing
+    end
+
+
 
     -- =========================
     -- PŮVODNÍ DECK HANDLING (BEZE ZMĚN)
