@@ -49,66 +49,76 @@ end
 -- LOVE.UPDATE (OPONENT)
 -- =========================
 function love.update(dt)
-if not is_turn then
-    update_playable(oponent_hand)
-
-    if is_eso then
-        -- zkontroluj, jestli má eso k zahrání
-        local has_eso = false
-        for _, card in ipairs(oponent_hand.cards) do
-            if card.value == 'e' then
-                has_eso = true
-                break
-            end
-        end
-
-        if has_eso then
-            -- zahrát eso místo přeskočení
-            for i, card in ipairs(oponent_hand.cards) do
+    if is_turn then
+        if is_eso then
+            local has_eso = false
+            for _, card in ipairs(player_hand.cards) do
                 if card.value == 'e' then
-                    current = card
-                    is_eso = true  -- eso pokračuje
-                    oponent_hand:play(i)
-                    table.insert(played, card)
-                    is_turn = true
-                    update_playable(player_hand)
-                    return
+                    has_eso = true
+                    break
                 end
             end
-        else
-            -- nemá eso → přeskočí tah
-            is_eso = false
-            is_turn = true
-            update_playable(player_hand)
-            return
-        end
-    end
 
-    -- normální tah (žádné eso aktivní)
-    for i, card in ipairs(oponent_hand.cards) do
-        if card.playable then
-            current = card
-
-            if card.value == 'e' then
-                is_eso = true
-            else
+            if not has_eso then
                 is_eso = false
+                is_turn = false
+                display_skip_message = true
+                skip_message_timer = 3
+                return
+            end
+        end
+    else -- not is_turn (opponent's turn)
+        update_playable(oponent_hand)
+
+        if is_eso then
+            local has_eso = false
+            for _, card in ipairs(oponent_hand.cards) do
+                if card.value == 'e' then
+                    has_eso = true
+                    break
+                end
             end
 
-            oponent_hand:play(i)
-            table.insert(played, card)
-
-            is_turn = true
-            update_playable(player_hand)
-            return
+            if has_eso then
+                for i, card in ipairs(oponent_hand.cards) do
+                    if card.value == 'e' then
+                        current = card
+                        is_eso = true
+                        oponent_hand:play(i)
+                        table.insert(played, card)
+                        is_turn = true
+                        update_playable(player_hand)
+                        return
+                    end
+                end
+            else
+                is_eso = false
+                is_turn = true
+                update_playable(player_hand)
+                return
+            end
         end
-    end
 
-    -- nemá žádnou hratelnou kartu → dobírá (nebo skip podle pravidel)
-    oponent_hand:draw()
-    is_turn = true
-    update_playable(player_hand)
-end
+        for i, card in ipairs(oponent_hand.cards) do
+            if card.playable then
+                current = card
+                if card.value == 'e' then
+                    is_eso = true
+                else
+                    is_eso = false
+                end
+                oponent_hand:play(i)
+                table.insert(played, card)
+                is_turn = true
+                update_playable(player_hand)
+                return
+            end
+        end
+
+        oponent_hand:draw()
+        is_turn = true
+        update_playable(player_hand)
+    end
 
     if display_skip_message then
         skip_message_timer = skip_message_timer - dt
@@ -224,27 +234,6 @@ end
 function love.mousepressed(x, y, button, istouch, presses)
 if is_turn then
     update_playable(player_hand)
-
-    -- pokud je eso aktivní
-    if is_eso then
-        -- hráč smí zahrát eso, pokud ho má
-        local has_eso = false
-        for _, card in ipairs(player_hand.cards) do
-            if card.value == 'e' then
-                has_eso = true
-                break
-            end
-        end
-
-        if not has_eso then
-            -- nemá eso → tah přeskočen
-            is_eso = false
-            is_turn = false
-            display_skip_message = true
-            skip_message_timer = 3
-            return
-        end
-    end
 
     -- normální klik na kartu
     local cardSpacing = CARD_WIDTH + 10
